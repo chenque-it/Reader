@@ -6,12 +6,6 @@
 #include "Cache.h"
 #include "Utils.h"
 #include "Book.h"
-#ifdef ENABLE_NETWORK
-#include "Upgrade.h"
-#include "OnlineBook.h"
-#include "https.h"
-#endif
-#include "HtmlParser.h"
 #include <map>
 #include <shellapi.h>
 
@@ -25,21 +19,6 @@ typedef struct loading_data_t
     HGLOBAL hMemory;
 } loading_data_t;
 
-#ifdef ENABLE_NETWORK
-struct chkbook_arg_t
-{
-    HWND hWnd;
-    OnlineBook* book;
-    std::set<std::wstring> checked_list;
-
-    chkbook_arg_t()
-    {
-        hWnd = NULL;
-        book = NULL;
-    }
-};
-#endif
-
 
 Cache               _Cache(CACHE_FILE_NAME);
 header_t*           _header                 = NULL;
@@ -50,9 +29,6 @@ HWND                _hTreeMark              = NULL;
 UINT                _uFindReplaceMsg        = 0;
 window_info_t       _WndInfo                = { 0 };
 BOOL                _IsAutoPage             = FALSE;
-#ifdef ENABLE_NETWORK
-Upgrade             _Upgrade;
-#endif
 Book *              _Book                   = NULL;
 loading_data_t *    _loading                = NULL;
 HHOOK               _hMouseHook             = NULL;
@@ -123,16 +99,6 @@ void                StopAutoPage(HWND);
 void                PauseAutoPage(HWND);
 void                ResumeAutoPage(HWND);
 void                ResetAutoPage(HWND hWnd);
-#ifdef ENABLE_NETWORK
-void                CheckUpgrade(HWND);
-BOOL                UpgradeCallback(void *, json_item_data_t *);
-chkbook_arg_t*      GetCheckBookArguments();
-void                StartCheckBookUpdate(HWND hWnd);
-void                OnCheckBookUpdateCallback(int is_update, int err, void* param);
-void                OnCheckBookUpdate(HWND hWnd);
-void                OnOpenOlBook(HWND, void*);
-void                UpdateBookMark(HWND, int, int);
-#endif
 BOOL                PlayLoadingImage(HWND);
 BOOL                StopLoadingImage(HWND);
 ULONGLONG           GetDllVersion(LPCTSTR);
@@ -142,11 +108,9 @@ void                ShowSysTray(HWND, BOOL);
 HBITMAP             CreateAlphaBGColorBitmap(HWND hWnd, COLORREF inColour, int width, int height, BYTE alpha);
 void                SetTreeviewFont();
 BOOL                LoadResourceImage(LPCWSTR, LPCWSTR, Gdiplus::Bitmap**, HGLOBAL*);
-book_source_t*      FindBookSource(const char* host);
 void                SetGlobalKey(HWND);
 int                 MessageBox_(HWND, UINT, UINT, UINT);
 int                 MessageBoxFmt_(HWND, UINT, UINT, UINT, ...);
-void                OnManualCheckBookUpdateCallback(int is_update, int err, void* param);
 
 
 #endif

@@ -13,15 +13,6 @@ call "%vsdevcmd%"
 
 setlocal enableextensions
 
-:: build networkless
-call:func_build Release x86 1
-if "%ret%" == "1" goto _err
-call:func_get_version Release
-if "%vers%" == "" goto _err
-call:func_copy_to_publish Release %vers% 1
-call:func_packet %vers% networkless
-call:func_cleanup Release 1
-
 :: build Release normal
 call:func_build Release x86
 if "%ret%" == "1" goto _err
@@ -65,16 +56,8 @@ exit
 
 
 :func_build
-:: %1 is Release/Debug, %2 is x86/x64, %3 is networkless
-if "%3" == "1" (
-copy "%sln_name%\%sln_name%.vcxproj" "%sln_name%\%sln_name%_bak.vcxproj"
-tool\repstr "ENABLE_NETWORK;" "" "%sln_name%\%sln_name%.vcxproj"
-)
+:: %1 is Release/Debug, %2 is x86/x64
 devenv %sln_name%.sln /rebuild "%1|%2"
-if "%3" == "1" (
-del "%sln_name%\%sln_name%.vcxproj" /q
-ren "%sln_name%\%sln_name%_bak.vcxproj" "%sln_name%.vcxproj"
-)
 if "%2" == "x64" (
 if not exist "%work_dir%\%2\%1\%sln_name%.exe" (
 set "ret=1"

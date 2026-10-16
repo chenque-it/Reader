@@ -5,15 +5,11 @@
 #include "TextBook.h"
 #include "EpubBook.h"
 #include "MobiBook.h"
-#include "OnlineBook.h"
 #include "Keyset.h"
 #include "Editctrl.h"
 #include "Advset.h"
 #include "DPIAwareness.h"
 #include "barcode.h"
-#include "OnlineDlg.h"
-#include "WebDlg.h"
-#include "WebBook.h"
 #include "DisplaySet.h"
 #if ENABLE_TAG
 #include "tagset.h"
@@ -47,11 +43,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    Setting(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    Proxy(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    JumpProgress(HWND, UINT, WPARAM, LPARAM);
-#ifdef ENABLE_NETWORK
-INT_PTR CALLBACK    UpgradeProc(HWND, UINT, WPARAM, LPARAM);
-#endif
 
 static void _free_resource(HWND hWnd);
 static void _update_data(HWND hWnd, BOOL keep_header, BOOL do_save);
@@ -382,14 +374,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case IDM_ADVSET:
             ADV_OpenDlg(hInst, hWnd, &(_header->chapter_rule));
             break;
-#ifdef ENABLE_NETWORK
-        case IDM_ONLINE:
-            OpenOnlineDlg();
-            break;
-        case IDM_WEB:
-            OpenWebDlg();
-            break;
-#endif
 #if ENABLE_TAG
         case IDM_TAGSET:
             TS_OpenDlg();
@@ -399,9 +383,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             break;
 #endif
-        case IDM_PROXY:
-            DialogBox(hInst, MAKEINTRESOURCE(IDD_PROXY), hWnd, Proxy);
-            break;
         case IDM_DEFAULT:
             OnRestoreDefault(hWnd, message, wParam, lParam);
             break;
@@ -741,27 +722,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
             }
         }
-#ifdef ENABLE_NETWORK
-        else if (VK_F5 == wParam) // online book manual check
-        {
-            if (_Book && !_Book->IsLoading() && _Book->GetBookType() == book_online)
-            {
-                if (IDYES == MessageBox_(_hWnd, IDS_REFRESH_TIP, IDS_WARN, MB_ICONINFORMATION | MB_YESNO))
-                {
-                    chkbook_arg_t* arg = GetCheckBookArguments();
-                    arg->book = (OnlineBook*)_Book;
-                    arg->hWnd = hWnd;
-                    arg->checked_list.insert(_Book->GetFileName());
-                    if (2 != ((OnlineBook*)_Book)->ManualCheckUpdate(hWnd, OnManualCheckBookUpdateCallback, arg))
-                    {
-                        if (arg->book != _Book)
-                            delete arg->book;
-                        arg->book = NULL;
-                    }
-                }
-            }
-        }
-#endif
         break;
     case WM_HOTKEY:
         KS_HotKeyProc(hWnd, message, wParam, lParam);
@@ -983,14 +943,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             else
                 ResetAutoPage(hWnd);
             break;
-#ifdef ENABLE_NETWORK
-        case IDT_TIMER_UPGRADE:
-            _Upgrade.Check(UpgradeCallback, hWnd);
-            break;
-        case IDT_TIMER_CHECKBOOK:
-            OnCheckBookUpdate(hWnd);
-            break;
-#endif
         case IDT_TIMER_LOADING:
             {
                 GUID Guid;
@@ -1010,11 +962,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         OnUpdateChapters(hWnd);
         OnUpdateBookMark(hWnd);
         break;
-#ifdef ENABLE_NETWORK
-    case WM_NEW_VERSION:
-        DialogBox(hInst, MAKEINTRESOURCE(IDD_UPGRADE), hWnd, UpgradeProc);
-        break;
-#endif
     case WM_OPEN_BOOK:
         OnOpenBookResult(hWnd, wParam == 1);
         break;
@@ -1026,15 +973,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             book_event_data_t* be = (book_event_data_t*)lParam;
             if (_Book && (!be || _Book == be->_this))
                 _Book->OnBookEvent(hWnd, message, wParam, lParam);
-#ifdef ENABLE_NETWORK
-            else
-            {
-                chkbook_arg_t* arg = GetCheckBookArguments();
-                be = (book_event_data_t*)lParam;
-                if (arg && arg->book && be && arg->book == be->_this)
-                    arg->book->OnBookEvent(hWnd, message, wParam, lParam);
-            }
-#endif
         }
         break;
     case WM_SAVE_CACHE:
@@ -1418,9 +1356,6 @@ INT_PTR CALLBACK FollowProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    POINT pt;
-    HWND hWnd;
-    RECT rc;
     TCHAR version[256];
     TCHAR info[256];
 
@@ -1450,19 +1385,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_REWARD), hDlg, FollowProc);
             }
-        }
-        break;
-    case WM_LBUTTONDOWN:
-        pt.x = LOWORD(lParam);
-        pt.y = HIWORD(lParam);
-        hWnd = GetDlgItem(hDlg, IDC_STATIC_LINK);
-        ClientToScreen(hDlg, &pt);
-        GetWindowRect(hWnd, &rc);
-        if (PtInRect(&rc, pt))
-        {
-#ifdef ENABLE_NETWORK
-            ShellExecute(NULL, _T("open"), _T("https://github.com/binbyu/Reader"), NULL, NULL, SW_SHOWNORMAL);
-#endif
         }
         break;
     default:
@@ -1594,135 +1516,6 @@ INT_PTR CALLBACK Setting(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
-#ifdef ENABLE_NETWORK
-int hapi_set_proxy_ex(proxy_t *proxy)
-{
-    http_proxy_t p = {0};
-    char addr[64];
-    char user[64];
-    char pass[64];
-
-    strcpy(addr, Utf16ToUtf8(_header->proxy.addr));
-    strcpy(user, Utf16ToUtf8(_header->proxy.user));
-    strcpy(pass, Utf16ToUtf8(_header->proxy.pass));
-    p.enable = proxy->enable;
-    p.port = proxy->port;
-    p.addr = addr;
-    p.user = user;
-    p.pass = pass;
-    return hapi_set_proxy(&p);
-}
-#endif
-
-INT_PTR CALLBACK Proxy(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    LRESULT res;
-    BOOL bResult = FALSE;
-    int value = 0;
-    TCHAR buf[256] = {0};
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        LoadString(hInst, IDS_DISABLE_PROXY, buf, 256);
-        SendMessage(GetDlgItem(hDlg, IDC_COMBO_PROXY), CB_ADDSTRING, 0, (LPARAM)buf);
-        LoadString(hInst, IDS_ENABLE_PROXY, buf, 256);
-        SendMessage(GetDlgItem(hDlg, IDC_COMBO_PROXY), CB_ADDSTRING, 0, (LPARAM)buf);
-        SendMessage(GetDlgItem(hDlg, IDC_COMBO_PROXY), CB_SETCURSEL, _header->proxy.enable ? 1 : 0, NULL);
-        SetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_ADDR), _header->proxy.addr);
-        SetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_USER), _header->proxy.user);
-        SetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_PASS), _header->proxy.pass);
-        if (_header->proxy.port == 0)
-            SetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_PORT), _T(""));
-        else
-            SetDlgItemInt(hDlg, IDC_EDIT_PROXY_PORT, _header->proxy.port, TRUE);
-        if (_header->proxy.enable)
-        {
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_ADDR), TRUE);
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PORT), TRUE);
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_USER), TRUE);
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PASS), TRUE);
-        }
-        else
-        {
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_ADDR), FALSE);
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PORT), FALSE);
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_USER), FALSE);
-            EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PASS), FALSE);
-        }
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        switch (LOWORD(wParam))
-        {
-        case IDOK:
-            GetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_PORT), buf, 64-1);
-            if (buf[0])
-            {
-                value = GetDlgItemInt(hDlg, IDC_EDIT_PROXY_PORT, &bResult, FALSE);
-                if (!bResult || value <= 0 || value >= 0xFFFF)
-                {
-                    MessageBox_(hDlg, IDS_INVALID_PORT, IDS_ERROR, MB_OK|MB_ICONERROR);
-                    return (INT_PTR)TRUE;
-                }
-                _header->proxy.port = value;
-            }
-            else
-            {
-                _header->proxy.port = 0;
-            }
-
-            res = SendMessage(GetDlgItem(hDlg, IDC_COMBO_PROXY), CB_GETCURSEL, 0, NULL);
-            if (res == 1)
-            {
-                _header->proxy.enable = TRUE;
-            }
-            else
-            {
-                _header->proxy.enable = FALSE;
-            }
-            GetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_ADDR), buf, 64-1);
-            wcscpy(_header->proxy.addr, buf);
-            GetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_USER), buf, 64-1);
-            wcscpy(_header->proxy.user, buf);
-            GetWindowText(GetDlgItem(hDlg, IDC_EDIT_PROXY_PASS), buf, 64-1);
-            wcscpy(_header->proxy.pass, buf);
-            Save(GetParent(hDlg));
-#ifdef ENABLE_NETWORK
-                // update proxy to libhttps
-            hapi_set_proxy_ex(&_header->proxy);
-#endif
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-            break;
-        case IDCANCEL:
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-            break;
-        case IDC_COMBO_PROXY:
-            res = SendMessage(GetDlgItem(hDlg, IDC_COMBO_PROXY), CB_GETCURSEL, 0, NULL);
-            if (res == 0)
-            {
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_ADDR), FALSE);
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PORT), FALSE);
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_USER), FALSE);
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PASS), FALSE);
-            }
-            else
-            {
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_ADDR), TRUE);
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PORT), TRUE);
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_USER), TRUE);
-                EnableWindow(GetDlgItem(hDlg, IDC_EDIT_PROXY_PASS), TRUE);
-            }
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return (INT_PTR)FALSE;
-}
-
 INT_PTR CALLBACK JumpProgress(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HWND hWnd;
@@ -1779,46 +1572,6 @@ INT_PTR CALLBACK JumpProgress(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
     return (INT_PTR)FALSE;
 }
 
-#ifdef ENABLE_NETWORK
-INT_PTR CALLBACK UpgradeProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    json_item_data_t *vinfo;
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        vinfo = _Upgrade.GetVersionInfo();
-        SetWindowText(GetDlgItem(hDlg, IDC_EDIT_UPGRADE_VERSION), vinfo->version.c_str());
-        SetWindowText(GetDlgItem(hDlg, IDC_EDIT_UPGRADE_DESC), vinfo->desc.c_str());
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        switch (LOWORD(wParam))
-        {
-        case IDOK:
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        case IDCANCEL:
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        case IDC_BUTTON_UPGRADE_INGORE:
-            vinfo = _Upgrade.GetVersionInfo();
-            wcscpy(_header->ingore_version, vinfo->version.c_str());
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-            break;
-        case IDC_BUTTON_UPGRADE_DOWN:
-            vinfo = _Upgrade.GetVersionInfo();
-            ShellExecute(NULL, _T("open"), vinfo->url.c_str(), NULL, NULL, SW_SHOWNORMAL);
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return (INT_PTR)FALSE;
-}
-#endif
-
 LRESULT OnCreate(HWND hWnd)
 {
     LPWSTR* argv;
@@ -1873,12 +1626,6 @@ LRESULT OnCreate(HWND hWnd)
         }
     }
 
-    // check upgrade
-#ifdef ENABLE_NETWORK
-    CheckUpgrade(hWnd);
-    StartCheckBookUpdate(hWnd);
-#endif
-
     // init keyset
     KS_Init(hWnd, _header->keyset);
 
@@ -1892,9 +1639,6 @@ LRESULT OnCreate(HWND hWnd)
 
 LRESULT OnUpdateMenu(HWND hWnd)
 {
-    static Gdiplus::Bitmap* s_bitmap = NULL;
-    static HGLOBAL s_hMemory = NULL;
-    static HBITMAP hBitmap = NULL;
     TCHAR buf[MAX_LOADSTRING];
     int menu_begin_id = IDM_OPEN_BEGIN;
     HMENU hMenuBar = GetMenu(hWnd);
@@ -1912,19 +1656,6 @@ LRESULT OnUpdateMenu(HWND hWnd)
         DeleteMenu(hMenuBar, 0, MF_BYPOSITION);
         hFile = NULL;
     }
-    if (hBitmap)
-    {
-        DeleteObject(hBitmap);
-        hBitmap = NULL;
-    }
-    if (!s_bitmap)
-    {
-        LoadResourceImage(MAKEINTRESOURCE(IDB_PNG_NEW), _T("PNG"), &s_bitmap, &s_hMemory);
-    }
-    if (s_bitmap)
-    {
-        s_bitmap->GetHBITMAP(Gdiplus::Color(0, 0, 0, 0), &hBitmap);
-    }
     hFile = CreateMenu();
     LoadString(hInst, IDS_MENU_OPEN, buf, MAX_LOADSTRING);
     AppendMenu(hFile, MF_STRING, IDM_OPEN, buf);
@@ -1933,12 +1664,6 @@ LRESULT OnUpdateMenu(HWND hWnd)
     {
         item_t* item = _Cache.get_item(i);
         AppendMenu(hFile, MF_STRING, (UINT_PTR)menu_begin_id, item->file_name);
-#ifdef ENABLE_NETWORK
-        if (0 == _tcscmp(PathFindExtension(item->file_name), _T(".ol")) && item->is_new)
-        {
-            SetMenuItemBitmaps(hFile, menu_begin_id, MF_BITMAP, hBitmap, hBitmap);
-        }
-#endif
         menu_begin_id++;
     }
     if (_header->item_count > 0)
@@ -2750,11 +2475,7 @@ LRESULT OnDropFiles(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         // check is txt file
         ext = PathFindExtension(szFileName);
-#ifdef ENABLE_NETWORK
-        if (ext && _tcscmp(ext, _T(".txt")) && _tcscmp(ext, _T(".epub")) && _tcscmp(ext, _T(".mobi")) && _tcscmp(ext, _T(".ol")) && _tcscmp(ext, _T(".web")))
-#else
         if (ext && _tcscmp(ext, _T(".txt")) && _tcscmp(ext, _T(".epub")) && _tcscmp(ext, _T(".mobi")))
-#endif
         {
             continue;
         }
@@ -2907,7 +2628,6 @@ LRESULT OnUpdateBookMark(HWND hWnd)
 LRESULT OnOpenBookResult(HWND hWnd, BOOL result)
 {
     item_t *item = NULL;
-    UINT type;
     TCHAR fileName[MAX_PATH] = { 0 };
     
     //EnableWindow(hWnd, TRUE);
@@ -2915,10 +2635,9 @@ LRESULT OnOpenBookResult(HWND hWnd, BOOL result)
     {
         StopLoadingImage(hWnd);
         _tcscpy(fileName, _Book->GetFileName());
-        type = (_Book->GetBookType() == book_online || _Book->GetBookType() == book_web) ? MB_RETRYCANCEL : MB_OK;
         delete _Book;
         _Book = NULL;
-        if (IDRETRY == MessageBox_(hWnd, IDS_OPEN_FILE_FAILED, IDS_ERROR, type | MB_ICONERROR))
+        if (IDRETRY == MessageBox_(hWnd, IDS_OPEN_FILE_FAILED, IDS_ERROR, MB_OK | MB_ICONERROR))
         {
             OnOpenBook(hWnd, fileName, FALSE);
         }
@@ -2942,14 +2661,6 @@ LRESULT OnOpenBookResult(HWND hWnd, BOOL result)
     // set param
     _Book->Init(&_item->index, _header);
     _Book->SetChapterRule(&(_header->chapter_rule));
-
-#ifdef ENABLE_NETWORK
-    if (_Book->GetBookType() == book_online)
-    {
-        _item->is_new = FALSE;
-        ((OnlineBook*)_Book)->UpdateBookSource();
-    }
-#endif
 
     // update menu
     OnUpdateMenu(hWnd);
@@ -3061,27 +2772,6 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                         }
                     }
                 }
-#ifdef ENABLE_NETWORK
-                else if (VK_F5 == pData->vkCode) // online book manual check
-                {
-                    if (_Book && !_Book->IsLoading() && _Book->GetBookType() == book_online)
-                    {
-                        if (IDYES == MessageBox_(_hWnd, IDS_REFRESH_TIP, IDS_WARN, MB_ICONINFORMATION | MB_YESNO))
-                        {
-                            chkbook_arg_t* arg = GetCheckBookArguments();
-                            arg->book = (OnlineBook*)_Book;
-                            arg->hWnd = _hWnd;
-                            arg->checked_list.insert(_Book->GetFileName());
-                            if (2 != ((OnlineBook*)_Book)->ManualCheckUpdate(_hWnd, OnManualCheckBookUpdateCallback, arg))
-                            {
-                                if (arg->book != _Book)
-                                    delete arg->book;
-                                arg->book = NULL;
-                            }
-                        }
-                    }
-                }
-#endif
 #endif
             } while (0);
         }
@@ -3112,20 +2802,7 @@ BOOL IsVaildFile(HWND hWnd, TCHAR *filename, int *p_size)
     if (p_size) *p_size = 0;
     ext = PathFindExtension(filename);
 
-#ifdef ENABLE_NETWORK
-    if (!_header || _header->book_source_count == 0)
-    {
-        if (0 == _tcscmp(ext, _T(".ol")))
-        {
-            if (hWnd)
-                MessageBox_(hWnd, IDS_NO_BOOKSOURCE_FAIL, IDS_ERROR, MB_OK | MB_ICONERROR);
-            return FALSE;
-        }
-    }
-    if (_tcscmp(ext, _T(".txt")) && _tcscmp(ext, _T(".epub")) && _tcscmp(ext, _T(".mobi")) && _tcscmp(ext, _T(".ol")) && _tcscmp(ext, _T(".web")))
-#else
     if (_tcscmp(ext, _T(".txt")) && _tcscmp(ext, _T(".epub")) && _tcscmp(ext, _T(".mobi")))
-#endif
     {
         if (hWnd)
             MessageBox_(hWnd, IDS_UNKNOWN_FORMAT, IDS_ERROR, MB_OK | MB_ICONERROR);
@@ -3160,9 +2837,6 @@ void OnOpenBook(HWND hWnd, TCHAR *filename, BOOL forced)
     TCHAR *ext = NULL;
     int size = 0;
     TCHAR szFileName[MAX_PATH] = {0};
-#ifdef ENABLE_NETWORK
-    chkbook_arg_t* arg = NULL;
-#endif
 
     _tcscpy(szFileName, filename);
     ext = PathFindExtension(szFileName);
@@ -3212,139 +2886,10 @@ void OnOpenBook(HWND hWnd, TCHAR *filename, BOOL forced)
         _Book->SetFileName(szFileName);
         _Book->OpenBook(hWnd);
     }
-#ifdef ENABLE_NETWORK
-    else if (_tcscmp(ext, _T(".ol")) == 0)
-    {
-        arg = GetCheckBookArguments();
-        if (arg && arg->book && arg->book->GetBookType() == book_online
-            && 0 == _tcscmp(arg->book->GetFileName(), szFileName))
-        {
-            if (arg->book != _Book)
-                delete arg->book;
-            arg->book = NULL;
-        }
-        _Book = new OnlineBook;
-        _Book->SetFileName(szFileName);
-        _Book->OpenBook(NULL, size, hWnd);
-    }
-    else if (_tcscmp(ext, _T(".web")) == 0)
-    {
-        _Book = new WebBook;
-        _Book->SetFileName(szFileName);
-        _Book->OpenBook(NULL, size, hWnd);
-    }
-#endif
 
     //EnableWindow(hWnd, FALSE);
     PlayLoadingImage(hWnd);
 }
-
-#ifdef ENABLE_NETWORK
-void OnOpenOlBook(HWND hWnd, void* olparam)
-{
-    static TCHAR oldir[MAX_PATH] = { 0 };
-    TCHAR savepath[MAX_PATH] = { 0 };
-    ol_book_param_t* param = (ol_book_param_t*)olparam;
-    ol_header_t olheader = { 0 };
-    FILE* fp = NULL;
-    int i;
-    int ret;
-
-    // create save path
-    if (!oldir[0])
-    {
-        // generate online file save path
-        GetModuleFileName(NULL, oldir, sizeof(TCHAR) * (MAX_PATH - 1));
-        for (i = (int)_tcslen(oldir) - 1; i >= 0; i--)
-        {
-            if (oldir[i] == _T('\\') || oldir[i] == _T('/'))
-            {
-                memcpy(&oldir[i + 1], ONLINE_FILE_SAVE_PATH, (_tcslen(ONLINE_FILE_SAVE_PATH) + 1) * sizeof(TCHAR));
-                break;
-            }
-        }
-
-        // create path
-        if (CreateDirectory(oldir, NULL))
-        {
-            SetFileAttributes(oldir, FILE_ATTRIBUTE_HIDDEN);
-        }
-    }
-    _tcscpy(savepath, oldir);
-    _tcscat(savepath, param->book_name);
-    _tcscat(savepath, _T(".ol"));
-
-    // check .ol file is exist
-    if (PathFileExists(savepath))
-    {
-        ret = MessageBox_(hWnd, IDS_FILE_ISEXIST, IDS_WARN, MB_ICONWARNING | MB_YESNOCANCEL);
-        if (ret == IDCANCEL)
-        {
-            return;
-        }
-        if (ret == IDNO)
-        {
-            OnOpenBook(hWnd, savepath, FALSE);
-            return;
-        }
-
-        DeleteFile(savepath);
-
-        // delete not exist items
-        for (i = 0; i < _header->item_count; i++)
-        {
-            item_t* item = _Cache.get_item(i);
-            if (_tcscmp(item->file_name, savepath) == 0)
-            {
-                _Cache.delete_item(i);
-                if (i == 0)
-                {
-                    _item = NULL;
-                }
-                break;
-            }
-        }
-    }
-
-    // generate ol_header_t
-    olheader.header_size = sizeof(ol_header_t) - sizeof(ol_chapter_info_t);
-    olheader.book_name_offset = olheader.header_size;
-    olheader.header_size += (u32)((_tcslen(param->book_name) + 1) * sizeof(TCHAR));
-    olheader.main_page_offset = olheader.header_size;
-    olheader.header_size += (u32)((strlen(param->main_page) + 1) * sizeof(char));
-    olheader.host_offset = olheader.header_size;
-    olheader.header_size += (u32)((strlen(param->host) + 1) * sizeof(char));
-    olheader.update_time = 0;
-    olheader.is_finished = param->is_finished;
-    olheader.chapter_size = 0;
-
-    // write file
-    fp = _tfopen(savepath, _T("wb"));
-    fwrite(&olheader, 1, olheader.book_name_offset, fp);
-    fwrite(param->book_name, 1, olheader.main_page_offset - olheader.book_name_offset, fp);
-    fwrite(param->main_page, 1, olheader.host_offset - olheader.main_page_offset, fp);
-    fwrite(param->host, 1, olheader.header_size - olheader.host_offset, fp);
-    fclose(fp);
-
-    OnOpenBook(hWnd, savepath, FALSE);
-}
-
-void UpdateBookMark(HWND hWnd, int index, int size)
-{
-    int i;
-    if (!_item || !_Book || _tcscmp(_item->file_name, _Book->GetFileName()) != 0)
-    {
-        return;
-    }
-
-    for (i=0; i<_item->mark_size; i++)
-    {
-        if (_item->mark[i] < index)
-            continue;
-        _item->mark[i] += size;
-    }
-}
-#endif
 
 VOID GetCacheVersion(TCHAR *ver)
 {
@@ -3374,16 +2919,6 @@ BOOL Init(void)
         }
     }
 
-#ifdef ENABLE_NETWORK
-    hapi_init();
-#if TEST_MODEL
-    logger_create();
-    hapi_set_logger(logger_printf);
-#endif
-    // set proxy for http client
-    hapi_set_proxy_ex(&_header->proxy);
-#endif
-
     // just for debug
 #if 0
     extern void TestXpathFromDump(void);
@@ -3405,13 +2940,6 @@ void Exit(void)
     {
         MessageBox_(NULL, IDS_SAVE_CACHE_FAIL, IDS_ERROR, MB_OK);
     }
-#ifdef ENABLE_NETWORK
-    HtmlParser::ReleaseInstance();
-    hapi_uninit();
-#if TEST_MODEL
-    logger_destroy();
-#endif
-#endif
 }
 
 static void _free_resource(HWND hWnd)
@@ -3627,12 +3155,6 @@ void RemoveMenus(HWND hWnd, BOOL redraw)
 
     hMenu = GetMenu(hWnd);
 
-#ifndef ENABLE_NETWORK
-    RemoveMenuById(hMenu, FALSE, IDM_WEB);      // 必须在 IDM_ONLINE 之前（TRUE 会连带删除后面一项）
-    RemoveMenuById(hMenu, TRUE, IDM_PROXY);
-    RemoveMenuById(hMenu, TRUE, IDM_ONLINE);
-#endif
-
 #if !ENABLE_TAG
     RemoveMenuById(hMenu, FALSE, IDM_TAGSET);
 #endif
@@ -3839,199 +3361,6 @@ void ResetAutoPage(HWND hWnd)
         }
     }
 }
-
-#ifdef ENABLE_NETWORK
-void CheckUpgrade(HWND hWnd)
-{
-    // set proxy & check upgrade
-    _Upgrade.SetIngoreVersion(_header->ingore_version);
-    _Upgrade.SetCheckVerTime(&_header->checkver_time);
-    _Upgrade.Check(UpgradeCallback, hWnd);
-    SetTimer(hWnd, IDT_TIMER_UPGRADE, 24 * 60 * 60 * 1000 /*one day*/, NULL);
-}
-
-BOOL UpgradeCallback(void *param, json_item_data_t *item)
-{
-    HWND hWnd = (HWND)param;
-
-    PostMessage(hWnd, WM_NEW_VERSION, 0, NULL);
-    return TRUE;
-}
-
-chkbook_arg_t* GetCheckBookArguments()
-{
-    static chkbook_arg_t* s_arg = NULL;
-    if (!s_arg)
-    {
-        s_arg = new chkbook_arg_t;
-    }
-    return s_arg;
-}
-
-void StartCheckBookUpdate(HWND hWnd)
-{
-    KillTimer(hWnd, IDT_TIMER_CHECKBOOK);
-    SetTimer(hWnd, IDT_TIMER_CHECKBOOK, 60 * 1000 /*one minute*/, NULL);
-}
-
-void OnCheckBookUpdateCallback(int is_update, int err, void* param)
-{
-    chkbook_arg_t* arg = (chkbook_arg_t*)param;
-    int i;
-
-    if (!arg)
-        return;
-
-    if (!arg->book)
-        return;
-
-    logger_printk("file=%s", Utf16ToAnsi(arg->book->GetFileName()));
-
-    if (is_update)
-    {
-        for (i = 0; i < _header->item_count; i++)
-        {
-            item_t* item = _Cache.get_item(i);
-            if (_tcscmp(item->file_name, arg->book->GetFileName()) == 0)
-            {
-                item->is_new = TRUE;
-                Save(arg->hWnd);
-                break;
-            }
-        }
-
-        OnUpdateMenu(arg->hWnd);
-
-        if (arg->book == _Book)
-        {
-            arg->book = NULL;
-            PostMessage(arg->hWnd, WM_UPDATE_CHAPTERS, 0, NULL);
-        }
-    }
-
-    if (arg->book)
-    {
-        if (arg->book != _Book)
-            delete arg->book;
-        arg->book = NULL;
-    }   
-
-    // check next book
-    if (arg->hWnd)
-    {
-        KillTimer(arg->hWnd, IDT_TIMER_CHECKBOOK);
-        SetTimer(arg->hWnd, IDT_TIMER_CHECKBOOK, 60 * 1000 /*one minute*/, NULL);
-    }
-}
-
-void OnManualCheckBookUpdateCallback(int is_update, int err, void* param)
-{
-    chkbook_arg_t* arg = (chkbook_arg_t*)param;
-
-    if (!arg)
-        return;
-
-    if (!arg->book)
-        return;
-
-    logger_printk("file=%s", Utf16ToAnsi(arg->book->GetFileName()));
-
-    if (is_update)
-    {
-        if (arg->book == _Book)
-        {
-            arg->book = NULL;
-            PostMessage(arg->hWnd, WM_UPDATE_CHAPTERS, 0, NULL);
-        }
-    }
-    
-    if (arg->book)
-    {
-        if (arg->book != _Book)
-            delete arg->book;
-        arg->book = NULL;
-    }
-}
-
-void OnCheckBookUpdate(HWND hWnd)
-{
-    chkbook_arg_t* arg = GetCheckBookArguments();
-    item_t* item = NULL;
-    int i;
-    int found = -1;
-
-    if (!arg)
-        return;
-
-    if (arg->book)
-    {
-        if (arg->book != _Book)
-            delete arg->book;
-        arg->book = NULL;
-    }   
-
-_check_next:
-    found = -1;
-    // find an online book
-    for (i = 0; i < _header->item_count; i++)
-    {
-        item = _Cache.get_item(i);
-        if (0 == _tcscmp(PathFindExtension(item->file_name), _T(".ol")))
-        {
-            if (arg->checked_list.find(item->file_name) != arg->checked_list.end())
-            {
-                continue;
-            }
-            found = i;
-            break;
-        }
-    }
-
-    if (found != -1)
-    {
-        item = _Cache.get_item(found);
-        if (_Book && _Book->GetBookType() == book_online && _tcscmp(_Book->GetFileName(), item->file_name) == 0)
-        {
-            arg->hWnd = hWnd;
-            arg->checked_list.insert(item->file_name);
-            arg->book = (OnlineBook*)_Book;
-            if (2 != ((OnlineBook*)_Book)->CheckUpdate(hWnd, OnCheckBookUpdateCallback, arg))
-            {
-                found = -1;
-                goto _check_next;
-            }
-        }
-        else
-        {
-            arg->hWnd = hWnd;
-            arg->checked_list.insert(item->file_name);
-            arg->book = new OnlineBook;
-            arg->book->SetFileName(item->file_name);
-            if (2 != arg->book->CheckUpdate(hWnd, OnCheckBookUpdateCallback, arg))
-            {
-                if (arg->book != _Book)
-                    delete arg->book;
-                arg->book = NULL;
-
-                found = -1;
-                goto _check_next;
-            }
-        }
-    }
-    else
-    {
-        if (arg->book)
-        {
-            if (arg->book != _Book)
-                delete arg->book;
-            arg->book = NULL;
-        }
-        arg->checked_list.clear();
-        KillTimer(hWnd, IDT_TIMER_CHECKBOOK);
-        SetTimer(hWnd, IDT_TIMER_CHECKBOOK, 60 * 60 * 1000 /*one hour*/, NULL);
-    }
-}
-#endif
 
 BOOL PlayLoadingImage(HWND hWnd)
 {
@@ -4351,20 +3680,6 @@ BOOL LoadResourceImage(LPCWSTR lpName, LPCWSTR lpType, Gdiplus::Bitmap **image, 
     ::GlobalFree(*hMemory);
     *hMemory = NULL;
     return FALSE;
-}
-
-book_source_t* FindBookSource(const char* host)
-{
-    int i = 0;
-
-    if (!host)
-        return NULL;
-    for (i = 0; i < _header->book_source_count; i++)
-    {
-        if (0 == strcmp(_header->book_sources[i].host, host))
-            return &_header->book_sources[i];
-    }
-    return NULL;
 }
 
 void SetGlobalKey(HWND hWnd)

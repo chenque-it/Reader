@@ -406,12 +406,12 @@ INT_PTR CALLBACK TS_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
                 if (hMenu)
                 {
                     LoadString(hInst, IDS_DELETE, str, 256);
-                    InsertMenu(hMenu, -1, MF_BYPOSITION, IDM_BS_DEL, str);
+                    InsertMenu(hMenu, -1, MF_BYPOSITION, IDM_TS_DEL, str);
                     LoadString(hInst, IDS_EDIT, str, 256);
                     InsertMenu(hMenu, -1, MF_BYPOSITION, IDM_TS_EDIT, str);
                     int ret = TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hList, NULL);
                     DestroyMenu(hMenu);
-                    if (IDM_BS_DEL == ret)
+                    if (IDM_TS_DEL == ret)
                     {
                         if (IDYES == MessageBox_(hDlg, IDS_DELETE_CFM, IDS_WARN, MB_ICONINFORMATION | MB_YESNO))
                         {
