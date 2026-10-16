@@ -68,7 +68,7 @@ Reader 是我个人开发的一款绿色、开源、免费的阅读器软件，�
    2.2 使用miniz代替zlib  
    2.3 使用wolfssl代替openssl  
 3. 更新书源配置文档
-   3.1 [bs.md](doc/bs.md)
+   3.1 bs.md（该文档已随在线小说功能移除）
 4. 修复一些bug  
 <br/>
 <br/>
@@ -82,7 +82,7 @@ Reader 是我个人开发的一款绿色、开源、免费的阅读器软件，�
    2.2 使用miniz代替zlib  
    2.3 使用wolfssl代替openssl  
 3. 更新书源配置文档
-   3.1 [bs.md](doc/bs.md)
+   3.1 bs.md（该文档已随在线小说功能移除）
 4. 修复一些bug  
 <br/>
 <br/>
