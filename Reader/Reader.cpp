@@ -9,7 +9,6 @@
 #include "Editctrl.h"
 #include "Advset.h"
 #include "DPIAwareness.h"
-#include "barcode.h"
 #include "DisplaySet.h"
 #if ENABLE_TAG
 #include "tagset.h"
@@ -41,7 +40,6 @@ TCHAR szStatusClass[MAX_LOADSTRING];            // the status window class name
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    Setting(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    JumpProgress(HWND, UINT, WPARAM, LPARAM);
 
@@ -62,7 +60,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);
 #endif
     MSG msg;
-    HACCEL hAccelTable;
     HANDLE hMutex;
 
     // Initialize global strings
@@ -124,18 +121,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
         return FALSE;
     }
 
-    hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_READER));
-
     // Main message loop:
     while (GetMessage(&msg, NULL, 0, 0))
     {
         if (!_hFindDlg || !IsDialogMessage(_hFindDlg, &msg))
         {
-            if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-            {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
     }
 
@@ -350,9 +342,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         switch (wmId)
         {
-        case IDM_ABOUT:
-            DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-            break;
         case IDM_EXIT:
             DestroyWindow(hWnd);
             break;
@@ -1055,342 +1044,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
-}
-
-Gdiplus::Bitmap *LoadBarCodeAlipay(void)
-{
-    static Gdiplus::Bitmap *image = NULL;
-    IStream* pStream = NULL;
-    void *buffer = NULL;
-    HGLOBAL hMemory = NULL;
-    static int i = 0;
-
-    if (!image)
-    {
-        // decrypto
-        for (; i<BARCODE_ALIPAY_LENGHT; i++)
-            barcode_alipay[i] ^= CRYPTO_KEY;
-        hMemory = ::GlobalAlloc(GMEM_MOVEABLE, BARCODE_ALIPAY_LENGHT);
-        if (!hMemory)
-        {
-            return image;
-        }
-        buffer = ::GlobalLock(hMemory);
-        if (!buffer)
-        {
-            ::GlobalFree(hMemory);
-            return image;
-        }
-        CopyMemory(buffer, barcode_alipay, BARCODE_ALIPAY_LENGHT);
-        if (::CreateStreamOnHGlobal(hMemory, FALSE, &pStream) == S_OK)
-        {
-            image = Gdiplus::Bitmap::FromStream(pStream);
-            pStream->Release();
-        }
-        ::GlobalUnlock(hMemory);
-        //::GlobalFree(hMemory);
-    }
-
-    if (!image || Gdiplus::Ok != image->GetLastStatus())
-    {
-        delete image;
-        image = NULL;
-        ::GlobalFree(hMemory);
-    }
-
-    return image;
-}
-
-Gdiplus::Bitmap* LoadBarCodeWechat(void)
-{
-    static Gdiplus::Bitmap* image = NULL;
-    IStream* pStream = NULL;
-    void* buffer = NULL;
-    HGLOBAL hMemory = NULL;
-    static int i = 0;
-
-    if (!image)
-    {
-        for (; i<BARCODE_WECHAT_LENGHT; i++)
-            barcode_wechat[i] ^= CRYPTO_KEY;
-        hMemory = ::GlobalAlloc(GMEM_MOVEABLE, BARCODE_WECHAT_LENGHT);
-        if (!hMemory)
-        {
-            return image;
-        }
-        buffer = ::GlobalLock(hMemory);
-        if (!buffer)
-        {
-            ::GlobalFree(hMemory);
-            return image;
-        }
-        CopyMemory(buffer, barcode_wechat, BARCODE_WECHAT_LENGHT);
-        if (::CreateStreamOnHGlobal(hMemory, FALSE, &pStream) == S_OK)
-        {
-            image = Gdiplus::Bitmap::FromStream(pStream);
-            pStream->Release();
-        }
-        ::GlobalUnlock(hMemory);
-        //::GlobalFree(hMemory);
-    }
-
-    if (!image || Gdiplus::Ok != image->GetLastStatus())
-    {
-        delete image;
-        image = NULL;
-        ::GlobalFree(hMemory);
-    }
-
-    return image;
-}
-
-Gdiplus::Bitmap* LoadBarCodeMP(void)
-{
-    static Gdiplus::Bitmap* image = NULL;
-    IStream* pStream = NULL;
-    void* buffer = NULL;
-    HGLOBAL hMemory = NULL;
-    static int i = 0;
-
-    if (!image)
-    {
-        for (; i<BARCODE_MP_LENGHT; i++)
-            barcode_mp[i] ^= CRYPTO_KEY;
-        hMemory = ::GlobalAlloc(GMEM_MOVEABLE, BARCODE_MP_LENGHT);
-        if (!hMemory)
-        {
-            return image;
-        }
-        buffer = ::GlobalLock(hMemory);
-        if (!buffer)
-        {
-            ::GlobalFree(hMemory);
-            return image;
-        }
-        CopyMemory(buffer, barcode_mp, BARCODE_MP_LENGHT);
-        if (::CreateStreamOnHGlobal(hMemory, FALSE, &pStream) == S_OK)
-        {
-            image = Gdiplus::Bitmap::FromStream(pStream);
-            pStream->Release();
-        }
-        ::GlobalUnlock(hMemory);
-        //::GlobalFree(hMemory);
-    }
-
-    if (!image || Gdiplus::Ok != image->GetLastStatus())
-    {
-        delete image;
-        image = NULL;
-        ::GlobalFree(hMemory);
-    }
-
-    return image;
-}
-
-INT_PTR CALLBACK RewardProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    Gdiplus::Bitmap *image_alipay = NULL;
-    Gdiplus::Bitmap* image_wechat = NULL;
-    static RECT rc_alipay;
-    static RECT rc_wechat;
-    static RECT client;
-    double dpiscaled;
-
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        image_alipay = LoadBarCodeAlipay();
-        image_wechat = LoadBarCodeWechat();
-        if (image_alipay && image_wechat)
-        {
-            // calc alipay image
-            dpiscaled = GetDpiScaled();
-            if (dpiscaled <= 1.0f)
-            {
-                ::SetRect(&rc_alipay, 0, 0, (int)(image_alipay->GetWidth()/2.0f), (int)(image_alipay->GetHeight()/2.0f));
-            }
-            else if (dpiscaled <= 1.25f)
-            {
-                ::SetRect(&rc_alipay, 0, 0, (int)(image_alipay->GetWidth()/3.0f*2.0f), (int)(image_alipay->GetHeight()/3.0f*2.0f));
-            }
-            else
-            {
-                ::SetRect(&rc_alipay, 0, 0, image_alipay->GetWidth(), image_alipay->GetHeight());
-            }
-
-            // calc wechat image
-            if (image_wechat)
-            {
-                rc_wechat.top = rc_alipay.top;
-                rc_wechat.bottom = rc_alipay.bottom;
-                rc_wechat.left = rc_alipay.right + 2;
-                rc_wechat.right = (rc_wechat.bottom - rc_wechat.top) * image_wechat->GetWidth() / image_wechat->GetHeight() + rc_wechat.left;
-            }
-
-            // calc client
-            client.top = rc_alipay.top;
-            client.bottom = rc_alipay.bottom;
-            client.left = rc_alipay.left;
-            client.right = rc_wechat.right;
-
-            AdjustWindowRect(&client, (DWORD)GetWindowLongPtr(hDlg, GWL_STYLE), FALSE);
-            SetWindowPos(hDlg, NULL, client.left, client.top, client.right-client.left, client.bottom-client.top, SWP_NOMOVE);
-        }
-        return (INT_PTR)TRUE;
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    case WM_PAINT:
-        {
-            HDC hdc;
-            PAINTSTRUCT ps;
-            Gdiplus::Graphics *graphics = NULL;
-            Gdiplus::Rect rect;
-            
-            hdc = BeginPaint(hDlg, &ps);
-            // TODO: Add any drawing code here...
-            image_alipay = LoadBarCodeAlipay();
-            image_wechat = LoadBarCodeWechat();
-
-            // draw image
-            graphics = new Gdiplus::Graphics(hdc);
-            if (graphics)
-            {
-                rect.X = 0;
-                rect.Y = 0;
-                rect.Width = rc_alipay.right- rc_alipay.left;
-                rect.Height = rc_alipay.bottom- rc_alipay.top;
-                graphics->SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-                graphics->DrawImage(image_alipay, rect, 0, 0, image_alipay->GetWidth(), image_alipay->GetHeight(), Gdiplus::UnitPixel);
-                rect.X = rc_wechat.left;
-                rect.Y = 0;
-                rect.Width = rc_wechat.right - rc_wechat.left;
-                rect.Height = rc_wechat.bottom - rc_wechat.top;
-                graphics->DrawImage(image_wechat, rect, 0, 0, image_wechat->GetWidth(), image_wechat->GetHeight(), Gdiplus::UnitPixel);
-                delete graphics;
-            }
-
-            EndPaint(hDlg, &ps);
-            return (INT_PTR)TRUE;
-        }
-        break;
-    case WM_LBUTTONDOWN:
-        EndDialog(hDlg, LOWORD(wParam));
-        return (INT_PTR)TRUE;
-        break;
-    default:
-        break;
-    }
-    return (INT_PTR)FALSE;
-}
-
-INT_PTR CALLBACK FollowProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    Gdiplus::Bitmap* image_mp = NULL;
-    static RECT rc_mp;
-    double dpiscaled;
-
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        image_mp = LoadBarCodeMP();
-        dpiscaled = GetDpiScaled();
-        if (image_mp)
-        {
-            // calc mp image
-            ::SetRect(&rc_mp, 0, 0, (int)(image_mp->GetWidth() * dpiscaled), (int)(image_mp->GetHeight() * dpiscaled));
-
-            AdjustWindowRect(&rc_mp, (DWORD)GetWindowLongPtr(hDlg, GWL_STYLE), FALSE);
-            SetWindowPos(hDlg, NULL, rc_mp.left, rc_mp.top, rc_mp.right - rc_mp.left, rc_mp.bottom - rc_mp.top, SWP_NOMOVE);
-        }
-        return (INT_PTR)TRUE;
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    case WM_PAINT:
-    {
-        HDC hdc;
-        PAINTSTRUCT ps;
-        Gdiplus::Graphics* graphics = NULL;
-        Gdiplus::Rect rect;
-
-        hdc = BeginPaint(hDlg, &ps);
-        // TODO: Add any drawing code here...
-        image_mp = LoadBarCodeMP();
-
-        // draw image
-        graphics = new Gdiplus::Graphics(hdc);
-        if (graphics)
-        {
-            rect.X = 0;
-            rect.Y = 0;
-            rect.Width = rc_mp.right - rc_mp.left;
-            rect.Height = rc_mp.bottom - rc_mp.top;
-            graphics->SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-            graphics->DrawImage(image_mp, rect, 0, 0, image_mp->GetWidth(), image_mp->GetHeight(), Gdiplus::UnitPixel);
-            delete graphics;
-        }
-
-        EndPaint(hDlg, &ps);
-        return (INT_PTR)TRUE;
-    }
-    break;
-    case WM_LBUTTONDOWN:
-        EndDialog(hDlg, LOWORD(wParam));
-        return (INT_PTR)TRUE;
-        break;
-    default:
-        break;
-    }
-    return (INT_PTR)FALSE;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    TCHAR version[256];
-    TCHAR info[256];
-
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        GetApplicationVersion(version);
-        _sntprintf(info, 256, _T("Reader, Version %s"), version);
-        SetDlgItemText(hDlg, IDC_STATIC_VERSION, info);
-        return (INT_PTR)TRUE;
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        else if (LOWORD(wParam) == IDC_BUTTON_REWARD)
-        {
-            if (LoadBarCodeAlipay() && LoadBarCodeWechat())
-            {
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_REWARD), hDlg, RewardProc);
-            }
-        }
-        else if (LOWORD(wParam) == IDC_BUTTON_FOLLOW)
-        {
-            if (LoadBarCodeMP())
-            {
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_REWARD), hDlg, FollowProc);
-            }
-        }
-        break;
-    default:
-        break;
-    }
-    return (INT_PTR)FALSE;
 }
 
 INT_PTR CALLBACK Setting(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
