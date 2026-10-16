@@ -1,15 +1,13 @@
 # Reader
-A win32 txt/epub/online file reader  
+A win32 txt/epub/mobi local file reader  
 
-最新release版本：　`v2.0.0.4`
-版本描述  | 下载地址
-------------- | -------------
-正式版x64  | [Reader_v2.0.0.4_x64.7z](https://github.com/binbyu/Reader/releases/download/v2.0.0.4/Reader_v2.0.0.4_x64.7z)
-正式版win32  | [Reader_v2.0.0.4.7z](https://github.com/binbyu/Reader/releases/download/v2.0.0.4/Reader_v2.0.0.4.7z)
-无网络版  | [Reader_v2.0.0.4_networkless.7z](https://github.com/binbyu/Reader/releases/download/v2.0.0.4/Reader_v2.0.0.4_networkless.7z)
-调试版  | [Reader_v2.0.0.4_debug.7z](https://github.com/binbyu/Reader/releases/download/v2.0.0.4/Reader_v2.0.0.4_debug.7z)
-<br/> 
-<br/> 
+> **本分支（networkless）说明**：纯本地不联网版本。已移除在线小说（书源体系）、
+> Web 阅读（局域网 legado 服务）、网络代理设置、版本更新检查，以及“关于”对话框
+> （含打赏/关注二维码）；程序不会发起任何网络请求，本地 TXT / EPUB / MOBI 阅读
+> 及其他功能保持不变。使用说明见 [readme.txt](readme.txt)。
+
+本分支未提供预编译发行包，如需使用请自行构建：用 Visual Studio 2022 打开 `Reader.sln`
+编译，或运行 `build-local.bat`（自动探测本机 Visual Studio 与 Windows SDK，产物输出到 publish 目录）。
 
 ```
 Reader 是我个人开发的一款绿色、开源、免费的阅读器软件，主要用于小说阅读。  
@@ -24,6 +22,10 @@ Reader 是我个人开发的一款绿色、开源、免费的阅读器软件，�
 <br/>
 <br/>
 <br/>
+
+---
+
+**版本历史（上游 master 记录，含原联网功能的历次说明；在线小说、Web 阅读、代理设置、版本更新检查等已在本分支移除）**
 
 ## v2.0.0.4 2023/09/03 bug修复  
 1.  修复热键注册失败后，程序卡死问题  
