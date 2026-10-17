@@ -25,3 +25,5 @@ dump.html
 # 本地测试脚手架
 /_probe/
 /test_https.obj
+# WorkBuddy 工作区记忆（不入库）
+/.workbuddy/

@@ -1894,7 +1894,7 @@ LRESULT OnOpenFile(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     OPENFILENAME ofn = {0};
     ofn.lStructSize = sizeof(ofn);  
     ofn.hwndOwner = hWnd;  
-    ofn.lpstrFilter = _T("Files (*.txt;*.epub;*.mobi;*.ol;*.web)\0*.txt;*.epub;*.mobi;*.ol;*.web\0\0");
+    ofn.lpstrFilter = _T("Files (*.txt;*.epub;*.mobi)\0*.txt;*.epub;*.mobi\0\0");
     ofn.lpstrInitialDir = NULL;
     ofn.lpstrFile = szFileName; 
     ofn.nMaxFile = sizeof(szFileName)/sizeof(*szFileName);  
