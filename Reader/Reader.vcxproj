@@ -137,7 +137,6 @@
     <ResourceCompile Include="Reader_zh-cn.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="book.ico" />
     <Image Include="loading.gif" />
     <Image Include="picker.bmp" />
     <Image Include="Reader.ico" />
