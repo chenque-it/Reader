@@ -19,10 +19,13 @@ protected:
     virtual BOOL ParserBook(HWND hWnd);
     BOOL ReadBook(void);
     BOOL ParserChapters(void);
+    BOOL ParserChaptersAuto(void);
     BOOL ParserChaptersDefault(void);
     BOOL ParserChaptersKeyword(void);
     BOOL ParserChaptersRegex(void);
     BOOL IsChapter(wchar_t* text, int len);
+    BOOL IsSpecialTitle(wchar_t* text, int len);
+    static BOOL IsTitleSeparator(wchar_t c);
 
 protected:
     static wchar_t m_ValidChapter[];
