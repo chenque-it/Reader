@@ -1,4 +1,5 @@
 #include "tagset.h"
+#include "DPIAwareness.h"
 
 #if ENABLE_TAG
 #include "resource.h"
@@ -257,7 +258,7 @@ static void _update_tagset_preview(HWND hDlg)
 
 void TS_OpenDlg(void)
 {
-    DialogBox(hInst, MAKEINTRESOURCE(IDD_TAGSET), _hWnd, TS_DlgProc);
+    ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_TAGSET), _hWnd, TS_DlgProc);
 }
 
 INT_PTR CALLBACK TS_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -483,7 +484,7 @@ void TS_item_OpenDlg(tag_item_callback_t cb, tagitem_t *tags, int idx)
     else
         memset(&g_tag_item, 0, sizeof(tagitem_t));
     g_tag_item_idx = idx;
-    DialogBox(hInst, MAKEINTRESOURCE(IDD_TAGITEM), _hWnd, TS_item_DlgProc);
+    ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_TAGITEM), _hWnd, TS_item_DlgProc);
 }
 
 INT_PTR CALLBACK TS_item_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)

@@ -355,7 +355,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             OpenDisplaySetDlg();
             break;
         case IDM_CONFIG:
-            DialogBox(hInst, MAKEINTRESOURCE(IDD_SETTING), hWnd, Setting);
+            ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_SETTING), hWnd, Setting);
             break;
         case IDM_KEYSET:
             KS_OpenDlg();
@@ -520,7 +520,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 HMENU hMenu = CreatePopupMenu();
                 if (hMenu)
                 {
-                    InsertMenu(hMenu, (UINT)-1, MF_BYPOSITION, IDM_MK_DEL, _T("Delete"));
+                    TCHAR str[256];
+                    LoadString(hInst, IDS_DELETE, str, 256);
+                    InsertMenu(hMenu, (UINT)-1, MF_BYPOSITION, IDM_MK_DEL, str);
                     SetForegroundWindow(hWnd);
                     int ret = TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, _hTreeMark, NULL);
                     DestroyMenu(hMenu);
@@ -985,8 +987,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 HMENU hMenu = CreatePopupMenu();
                 if(hMenu)
                 {
-                    InsertMenu(hMenu, (UINT)-1, MF_BYPOSITION, IDM_ST_OPEN, _T("Open"));
-                    InsertMenu(hMenu, (UINT)-1, MF_BYPOSITION, IDM_ST_EXIT, _T("Exit"));
+                    TCHAR str[256];
+                    LoadString(hInst, IDS_MENU_OPEN, str, 256);
+                    InsertMenu(hMenu, (UINT)-1, MF_BYPOSITION, IDM_ST_OPEN, str);
+                    LoadString(hInst, IDS_MENU_EXIT, str, 256);
+                    InsertMenu(hMenu, (UINT)-1, MF_BYPOSITION, IDM_ST_EXIT, str);
                     SetForegroundWindow(hWnd);
                     ret = TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_RETURNCMD, pt.x, pt.y, 0, hWnd, NULL);
                     DestroyMenu(hMenu);
@@ -1954,7 +1959,7 @@ LRESULT OnSearch(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 LRESULT OnJump(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     if (_Book && !_Book->IsLoading())
-        DialogBox(hInst, MAKEINTRESOURCE(IDD_JUMP_PROGRESS), hWnd, JumpProgress);
+        ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_JUMP_PROGRESS), hWnd, JumpProgress);
     return 0;
 }
 

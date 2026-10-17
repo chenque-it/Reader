@@ -1,5 +1,6 @@
 #include "Keyset.h"
 #include "resource.h"
+#include "DPIAwareness.h"
 
 extern LRESULT OnHideWin(HWND, UINT, WPARAM, LPARAM);
 extern LRESULT OnHideBorder(HWND, UINT, WPARAM, LPARAM);
@@ -95,7 +96,7 @@ void KS_GetDefaultKeyset(keyset_t *keyset)
 
 void KS_OpenDlg(void)
 {
-    DialogBox(hInst, MAKEINTRESOURCE(IDD_KEYSET), _hWnd, KS_DlgProc);
+    ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_KEYSET), _hWnd, KS_DlgProc);
 }
 
 INT_PTR CALLBACK KS_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)

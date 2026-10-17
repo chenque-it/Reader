@@ -17,5 +17,7 @@ void DpiChanged(HWND hWnd, LOGFONT *lf, RECT *rect, WPARAM newdpi, RECT *newRect
 
 double GetDpiScaled(void);
 
+INT_PTR ScaledDialogBoxParam(HINSTANCE hInstance, LPCTSTR lpTemplateName, HWND hWndParent, DLGPROC lpDialogFunc);
+
 
 #endif

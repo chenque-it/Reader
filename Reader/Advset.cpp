@@ -2,6 +2,7 @@
 #include "Advset.h"
 #include "Editctrl.h"
 #include "Book.h"
+#include "DPIAwareness.h"
 #include <regex>
 
 
@@ -21,7 +22,7 @@ void ADV_OpenDlg(HINSTANCE hInst, HWND hWnd, chapter_rule_t *rule)
     {
         EC_LeaveEditMode();
     }
-    DialogBox(hInst, MAKEINTRESOURCE(IDD_ADVSET), hWnd, ADV_DlgProc);
+    ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_ADVSET), hWnd, ADV_DlgProc);
     if (g_bChanged)
     {
         // reload book

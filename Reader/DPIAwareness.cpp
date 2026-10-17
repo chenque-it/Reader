@@ -159,3 +159,92 @@ double GetDpiScaled(void)
     GetDPI(&dpix, &dpiy);
     return (((double)dpix)/((double)DEFAULT_DPI));
 }
+
+typedef struct tagDLGTEMPLATEEX_HEADER
+{
+    WORD dlgVer;
+    WORD signature;
+    DWORD helpID;
+    DWORD exStyle;
+    DWORD style;
+    WORD cDlgItems;
+    short x;
+    short y;
+    short cx;
+    short cy;
+} DLGTEMPLATEEX_HEADER;
+
+static WORD *SkipSzOrOrd(WORD *p)
+{
+    if (*p == 0x0000)
+        return p + 1;
+    if (*p == 0xFFFF)
+        return p + 2;
+    while (*p)
+        p++;
+    return p + 1;
+}
+
+// Create a DPI-scaled modal dialog:
+// - scale template pointsize by current DPI so DLU layout scales accordingly
+// - replace DS_FIXEDSYS with DS_SETFONT so the template font really applies
+//   (otherwise the font stays fixed at 8pt and never scales)
+// fall back to plain DialogBoxParam at 96 DPI / non-EX template / named resource
+INT_PTR ScaledDialogBoxParam(HINSTANCE hInstance, LPCTSTR lpTemplateName, HWND hWndParent, DLGPROC lpDialogFunc)
+{
+    HRSRC hrsrc;
+    HGLOBAL hglb;
+    void *ptmpl, *pcopy;
+    DLGTEMPLATEEX_HEADER *ph;
+    WORD *pfont;
+    int dpix, dpiy, size;
+    INT_PTR ret;
+
+    if (!IS_INTRESOURCE(lpTemplateName))
+        return DialogBoxParam(hInstance, lpTemplateName, hWndParent, lpDialogFunc, 0);
+
+    hrsrc = FindResource(hInstance, lpTemplateName, RT_DIALOG);
+    if (!hrsrc)
+        return DialogBoxParam(hInstance, lpTemplateName, hWndParent, lpDialogFunc, 0);
+
+    hglb = LoadResource(hInstance, hrsrc);
+    if (!hglb)
+        return DialogBoxParam(hInstance, lpTemplateName, hWndParent, lpDialogFunc, 0);
+
+    ptmpl = LockResource(hglb);
+    if (!ptmpl)
+        return DialogBoxParam(hInstance, lpTemplateName, hWndParent, lpDialogFunc, 0);
+
+    ph = (DLGTEMPLATEEX_HEADER *)ptmpl;
+    GetDPI(&dpix, &dpiy);
+    if (ph->signature != 0xFFFF || (dpix == DEFAULT_DPI && dpiy == DEFAULT_DPI) ||
+        0 == (ph->style & DS_FIXEDSYS))
+    {
+        return DialogBoxParam(hInstance, lpTemplateName, hWndParent, lpDialogFunc, 0);
+    }
+
+    size = SizeofResource(hInstance, hrsrc);
+    pcopy = LocalAlloc(LMEM_FIXED, size);
+    if (!pcopy)
+        return DialogBoxParam(hInstance, lpTemplateName, hWndParent, lpDialogFunc, 0);
+    memcpy(pcopy, ptmpl, size);
+
+    // 1) DS_FIXEDSYS(0x0008) -> DS_SETFONT(0x0040)
+    ph = (DLGTEMPLATEEX_HEADER *)pcopy;
+    ph->style = (ph->style & ~DS_FIXEDSYS) | DS_SETFONT;
+
+    // 2) locate pointsize: skip menu/windowClass/title after the 26-byte header
+    //    (header size is even, so following elements are naturally WORD aligned)
+    pfont = (WORD *)((BYTE *)pcopy + sizeof(DLGTEMPLATEEX_HEADER));
+    pfont = SkipSzOrOrd(pfont);
+    pfont = SkipSzOrOrd(pfont);
+    pfont = SkipSzOrOrd(pfont);
+    pfont = (WORD *)(((UINT_PTR)pfont + 1) & ~(UINT_PTR)1);
+
+    // 3) scale pointsize: 8pt@96DPI -> 10pt@120 / 12pt@144 / 16pt@192
+    *pfont = (WORD)MulDiv(*pfont, dpix, DEFAULT_DPI);
+
+    ret = DialogBoxIndirectParam(hInstance, (LPCDLGTEMPLATE)pcopy, hWndParent, lpDialogFunc, 0);
+    LocalFree(pcopy);
+    return ret;
+}

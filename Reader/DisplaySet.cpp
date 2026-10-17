@@ -5,6 +5,7 @@
 #include <CommDlg.h>
 #include <shlwapi.h>
 #include <WindowsX.h>
+#include "DPIAwareness.h"
 
 typedef struct display_set_data_t
 {
@@ -89,7 +90,7 @@ void OpenDisplaySetDlg(void)
     memset(&_display, 0, sizeof(display_set_data_t));
     COPY_DISPLAY_PARAMS(_header, &_display);
 
-    DialogBox(hInst, MAKEINTRESOURCE(IDD_DISPLAYSET), _hWnd, DisplaySetDlgProc);
+    ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_DISPLAYSET), _hWnd, DisplaySetDlgProc);
 
     if (_display.is_save)
     {
