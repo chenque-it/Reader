@@ -1,35 +1,30 @@
 @echo off
 
-set "drive_letter=D"
+cd /d "%~dp0"
 set "work_dir=%cd%"
 set "sln_name=Reader"
-set "vsdevcmd=%drive_letter%:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools\VsDevCmd.bat"
 set "publish=publish"
 set "ret=0"
 set "vers="
+
+:: locate VsDevCmd via vswhere (no hardcoded VS path)
+set "vswhere=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%vswhere%" (
+echo [ERROR] vswhere.exe not found. Please install Visual Studio first.
+goto _err
+)
+set "vsdevcmd="
+for /f "usebackq delims=" %%i in (`"%vswhere%" -latest -products * -requires Microsoft.Component.MSBuild -find Common7\Tools\VsDevCmd.bat`) do set "vsdevcmd=%%i"
+if not defined vsdevcmd (
+echo [ERROR] VsDevCmd.bat not found via vswhere.
+goto _err
+)
+echo [INFO] VsDevCmd : %vsdevcmd%
 
 :: open vsdev
 call "%vsdevcmd%"
 
 setlocal enableextensions
-
-:: build Release normal
-call:func_build Release x86
-if "%ret%" == "1" goto _err
-call:func_get_version Release
-if "%vers%" == "" goto _err
-call:func_copy_to_publish Release %vers%
-call:func_packet %vers%
-call:func_cleanup Release 1
-
-:: build Debug normal
-call:func_build Debug x86
-if "%ret%" == "1" goto _err
-call:func_get_version Debug
-if "%vers%" == "" goto _err
-call:func_copy_to_publish Debug %vers%
-call:func_packet %vers% debug
-call:func_cleanup Debug 1
 
 :: build Release x64
 call:func_build Release x64
@@ -37,7 +32,7 @@ if "%ret%" == "1" goto _err
 call:func_get_version x64\Release
 if "%vers%" == "" goto _err
 call:func_copy_to_publish x64\Release %vers%
-call:func_packet %vers% x64
+call:func_packet %vers%
 call:func_cleanup x64\Release 1
 call:func_cleanup x64 1
 
@@ -56,33 +51,23 @@ exit
 
 
 :func_build
-:: %1 is Release/Debug, %2 is x86/x64
+:: %1 is Release/Debug, %2 is x64
 devenv %sln_name%.sln /rebuild "%1|%2"
-if "%2" == "x64" (
 if not exist "%work_dir%\%2\%1\%sln_name%.exe" (
 set "ret=1"
-)
-) else (
-if not exist "%work_dir%\%1\%sln_name%.exe" (
-set "ret=1"
-)
 )
 goto:eof
 
 :func_get_version
 :: %1 is config
 set "file=%work_dir%\%1\%sln_name%.exe"
-if not defined file (
-set "ret=1"
-goto:eof
-)
 if not exist "%file%" (
 set "ret=1"
 goto:eof
 )
-FOR /F "tokens=2 delims==" %%a in ('
-    wmic datafile where name^="%file:\=\\%" get Version /value 
-') do set "vers=%%a"
+:: read file version via PowerShell (wmic was removed since Windows 11 24H2)
+for /f "usebackq delims=" %%v in (`powershell -NoProfile -Command "(Get-Item -LiteralPath '%file%').VersionInfo.FileVersion"`) do set "vers=%%v"
+if not defined vers set "ret=1"
 goto:eof
 
 :func_copy_to_publish

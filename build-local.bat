@@ -15,7 +15,7 @@ rem     which is NOT part of this source tree, so packing fails with
 rem     "Can't load module: 7z.dll".
 rem
 rem  This script finds the Visual Studio / Windows SDK you actually have,
-rem  builds Release x86 + x64 and packs them into publish\.
+rem  builds Release x64 and packs it into publish\.
 rem
 rem  Overrides:  set TOOLSET=v142     (default v143)
 rem ===========================================================================
@@ -54,7 +54,6 @@ echo [INFO] archiver : %sevenzip%
 
 if not exist "%publish%" mkdir "%publish%"
 
-call :build Release x86  || goto _err
 call :build Release x64  || goto _err
 
 echo.
