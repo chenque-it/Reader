@@ -142,15 +142,29 @@ void DpiChanged(HWND hWnd, LOGFONT *lf, RECT *rect, WPARAM newdpi, RECT *newRect
 {
     int newdpiy = HIWORD(newdpi);
     int newdpix = LOWORD(newdpi);
+    (void)hWnd;
 
-    // set font
+    // scale the font against the OLD dpi baseline; the caller moves the baseline
+    // once (SetDpiGlobal) after every font is done, otherwise a second call would
+    // divide by an already-updated baseline and silently do nothing.
     lf->lfWidth = MulDiv(lf->lfWidth, newdpix, g_lastDpix);
     lf->lfHeight = MulDiv(lf->lfHeight, newdpiy, g_lastDpiy);
-    g_lastDpix = newdpix;
-    g_lastDpiy = newdpiy;
 
     memcpy(rect, newRect, sizeof(RECT));
-    SetWindowPos(hWnd, hWnd, newRect->left, newRect->top, newRect->right-newRect->left, newRect->bottom-newRect->top, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void SetDpiGlobal(WPARAM newdpi)
+{
+    g_lastDpix = LOWORD(newdpi);
+    g_lastDpiy = HIWORD(newdpi);
+}
+
+int GetDpiY(void)
+{
+    int dpix = 0, dpiy = 0;
+
+    GetDPI(&dpix, &dpiy);
+    return dpiy;
 }
 
 double GetDpiScaled(void)
@@ -173,6 +187,12 @@ typedef struct tagDLGTEMPLATEEX_HEADER
     short cx;
     short cy;
 } DLGTEMPLATEEX_HEADER;
+
+// The on-disk DLGTEMPLATEEX header is exactly 26 bytes. sizeof() must NOT be
+// used here: the struct has DWORD members so the compiler pads it to 28, and
+// every following field (menu/windowClass/title/pointsize) would be parsed
+// 2 bytes off, leaving the real pointsize untouched.
+#define DLGTEMPLATEEX_HEADER_SIZE      26
 
 static WORD *SkipSzOrOrd(WORD *p)
 {
@@ -235,7 +255,7 @@ INT_PTR ScaledDialogBoxParam(HINSTANCE hInstance, LPCTSTR lpTemplateName, HWND h
 
     // 2) locate pointsize: skip menu/windowClass/title after the 26-byte header
     //    (header size is even, so following elements are naturally WORD aligned)
-    pfont = (WORD *)((BYTE *)pcopy + sizeof(DLGTEMPLATEEX_HEADER));
+    pfont = (WORD *)((BYTE *)pcopy + DLGTEMPLATEEX_HEADER_SIZE);
     pfont = SkipSzOrOrd(pfont);
     pfont = SkipSzOrOrd(pfont);
     pfont = SkipSzOrOrd(pfont);

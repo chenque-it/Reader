@@ -256,9 +256,39 @@ static void _update_tagset_preview(HWND hDlg)
     }
 }
 
+// cached brush for WM_CTLCOLORSTATIC: one CreateSolidBrush per repaint leaks GDI objects
+static HBRUSH   s_hStaticBrush = NULL;
+static COLORREF s_crStaticBrush = 0xFFFFFFFF;
+
+static HBRUSH _get_tagset_brush(COLORREF cr)
+{
+    if (!s_hStaticBrush || s_crStaticBrush != cr)
+    {
+        if (s_hStaticBrush)
+        {
+            DeleteObject(s_hStaticBrush);
+            s_hStaticBrush = NULL;
+        }
+        s_hStaticBrush = CreateSolidBrush(cr);
+        s_crStaticBrush = cr;
+    }
+    return s_hStaticBrush;
+}
+
+static void _free_tagset_brush(void)
+{
+    if (s_hStaticBrush)
+    {
+        DeleteObject(s_hStaticBrush);
+        s_hStaticBrush = NULL;
+        s_crStaticBrush = 0xFFFFFFFF;
+    }
+}
+
 void TS_OpenDlg(void)
 {
     ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_TAGSET), _hWnd, TS_DlgProc);
+    _free_tagset_brush();
 }
 
 INT_PTR CALLBACK TS_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -447,6 +477,7 @@ INT_PTR CALLBACK TS_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
         break;
     case WM_CTLCOLORSTATIC:
         {
+            COLORREF crBk = GetSysColor(COLOR_3DFACE);
             if (IDC_STATIC_PREVIEW == GetDlgCtrlID((HWND)lParam))
             {
                 hList = GetDlgItem(hDlg, IDC_LIST_TAGSET);
@@ -456,13 +487,14 @@ INT_PTR CALLBACK TS_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
                     SetBkColor((HDC)wParam, _header->tags[iPos].bg_color);
                     SetBkMode((HDC)wParam, OPAQUE);
                     SetTextColor((HDC)wParam, _header->tags[iPos].font_color);
+                    crBk = _header->tags[iPos].bg_color;
                 }
             }
             else
             {
                 SetBkMode((HDC)wParam, TRANSPARENT);
             }
-            return (BOOL)CreateSolidBrush (GetSysColor(COLOR_MENU));
+            return (INT_PTR)_get_tagset_brush(crBk);
         }
         break;
     default:
@@ -485,6 +517,7 @@ void TS_item_OpenDlg(tag_item_callback_t cb, tagitem_t *tags, int idx)
         memset(&g_tag_item, 0, sizeof(tagitem_t));
     g_tag_item_idx = idx;
     ScaledDialogBoxParam(hInst, MAKEINTRESOURCE(IDD_TAGITEM), _hWnd, TS_item_DlgProc);
+    _free_tagset_brush();
 }
 
 INT_PTR CALLBACK TS_item_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -617,17 +650,19 @@ INT_PTR CALLBACK TS_item_DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
         break;
     case WM_CTLCOLORSTATIC:
         {
+            COLORREF crBk = GetSysColor(COLOR_3DFACE);
             if (IDC_STATIC_PREVIEW == GetDlgCtrlID((HWND)lParam))
             {
                 SetBkColor((HDC)wParam, g_tag_item.bg_color);
                 SetBkMode((HDC)wParam, OPAQUE);
                 SetTextColor((HDC)wParam, g_tag_item.font_color);
+                crBk = g_tag_item.bg_color;
             }
             else
             {
                 SetBkMode((HDC)wParam, TRANSPARENT);
             }
-            return (BOOL)CreateSolidBrush (GetSysColor(COLOR_MENU));
+            return (INT_PTR)_get_tagset_brush(crBk);
         }
         break;
     default:

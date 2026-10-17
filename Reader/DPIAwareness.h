@@ -1,6 +1,10 @@
 #ifndef __DPI_AWARENESS_H__
 #define __DPI_AWARENESS_H__
 
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED   0x02E0
+#endif
+
 int GetCxScreenForDpi(void);
 int GetCyScreenForDpi(void);
 
@@ -14,6 +18,10 @@ void RestoreRectForDpi(RECT *rect);
 void RestoreFontForDpi(LOGFONT *lf);
 
 void DpiChanged(HWND hWnd, LOGFONT *lf, RECT *rect, WPARAM newdpi, RECT *newRect);
+
+void SetDpiGlobal(WPARAM newdpi);
+
+int GetDpiY(void);
 
 double GetDpiScaled(void);
 

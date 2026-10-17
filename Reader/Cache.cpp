@@ -305,7 +305,7 @@ void Cache::default_header(header_t* header)
     int nHeight;
     if (!hFont)
     {
-        nHeight = -MulDiv(PointSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
+        nHeight = -MulDiv(PointSize, 96, 72); // 96 DPI baseline: UpdateFontForDpi scales it later
         hFont = CreateFont(nHeight, 0, 0, 0,
             FW_LIGHT, FALSE, FALSE, FALSE,
             ANSI_CHARSET, OUT_STROKE_PRECIS,

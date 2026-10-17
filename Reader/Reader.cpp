@@ -169,12 +169,14 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.cbClsExtra       = 0;
     wcex.cbWndExtra       = 0;
     wcex.hInstance        = hInstance;
-    wcex.hIcon            = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_BOOK));
+    wcex.hIcon            = (HICON)LoadImage(hInstance, MAKEINTRESOURCE(IDI_READER), IMAGE_ICON,
+                              GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_DEFAULTCOLOR);
     wcex.hCursor          = LoadCursor(NULL, IDC_ARROW);
     wcex.hbrBackground    = CreateSolidBrush(_header->bg_color);//(HBRUSH)(COLOR_WINDOW+1);
     wcex.lpszMenuName     = MAKEINTRESOURCE(IDC_READER);
     wcex.lpszClassName    = szWindowClass;
-    wcex.hIconSm          = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_BOOK));
+    wcex.hIconSm          = (HICON)LoadImage(hInstance, MAKEINTRESOURCE(IDI_SMALL), IMAGE_ICON,
+                              GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
 
     return RegisterClassEx(&wcex);
 }
@@ -1031,18 +1033,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         Exit();
         return 0;
         break;
-    case 0x02E0: //WM_DPICHANGED
-        {            
-            NONCLIENTMETRICS theMetrics;
-            theMetrics.cbSize = sizeof(NONCLIENTMETRICS);
-            SystemParametersInfo(SPI_GETNONCLIENTMETRICS,sizeof(NONCLIENTMETRICS), (PVOID) &theMetrics,0);
-            HFONT hFont = CreateFontIndirect(&(theMetrics.lfMenuFont));
-            SendMessage(_hTreeView, WM_SETFONT, (WPARAM)hFont, NULL);
-            SendMessage(_hTreeView, TVM_SETITEMHEIGHT, theMetrics.iMenuHeight, NULL);
-            SendMessage(_hTreeMark, WM_SETFONT, (WPARAM)hFont, NULL);
-            SendMessage(_hTreeMark, TVM_SETITEMHEIGHT, theMetrics.iMenuHeight, NULL);
-            DpiChanged(hWnd, &_header->font, &_header->placement.rcNormalPosition, wParam, (RECT*)lParam);
-            DpiChanged(hWnd, &_header->font, &_header->fs_placement.rcNormalPosition, wParam, (RECT*)lParam);
+    case WM_DPICHANGED:
+        {
+            RECT *prcNew = (RECT *)lParam;
+
+            // scale both fonts against the same old-dpi baseline, then move
+            // the baseline once (otherwise the 2nd call scales by 1.0)
+            DpiChanged(hWnd, &_header->font, &_header->placement.rcNormalPosition, wParam, prcNew);
+            DpiChanged(hWnd, &_header->font_title, &_header->fs_placement.rcNormalPosition, wParam, prcNew);
+            SetDpiGlobal(wParam);
+
+            // SetTreeviewFont owns s_hFont and deletes the previous one,
+            // so rebuilding here cannot leak an HFONT
+            SetTreeviewFont();
+
+            // apply the window rect the system suggests for the new DPI
+            SetWindowPos(hWnd, NULL, prcNew->left, prcNew->top,
+                prcNew->right - prcNew->left, prcNew->bottom - prcNew->top,
+                SWP_NOZORDER | SWP_NOACTIVATE);
         }
         break;
     default:
@@ -2081,11 +2089,12 @@ LRESULT OnFontZoomIn(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     if (_header && _Book && !_Book->IsLoading())
     {
-        PointSize = abs(MulDiv(_header->font.lfHeight, 72, GetDeviceCaps(GetDC(NULL), LOGPIXELSY)));
+        int logpixelsy = GetDpiY();
+        PointSize = abs(MulDiv(_header->font.lfHeight, 72, logpixelsy));
         if (PointSize < ZOOM_MAX)
         {
             PointSize++;
-            _header->font.lfHeight = -MulDiv(PointSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
+            _header->font.lfHeight = -MulDiv(PointSize, logpixelsy, 72);
             _Book->ReDraw(hWnd);
             Save(hWnd);
         }
@@ -2101,11 +2110,12 @@ LRESULT OnFontZoomOut(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     if (_header && _Book && !_Book->IsLoading())
     {
-        PointSize = abs(MulDiv(_header->font.lfHeight, 72, GetDeviceCaps(GetDC(NULL), LOGPIXELSY)));
+        int logpixelsy = GetDpiY();
+        PointSize = abs(MulDiv(_header->font.lfHeight, 72, logpixelsy));
         if (PointSize > ZOOM_MIN)
         {
             PointSize--;
-            _header->font.lfHeight = -MulDiv(PointSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
+            _header->font.lfHeight = -MulDiv(PointSize, logpixelsy, 72);
             _Book->ReDraw(hWnd);
             Save(hWnd);
         }
@@ -3160,7 +3170,8 @@ void ShowSysTray(HWND hWnd, BOOL bShow)
             _nid.hWnd = hWnd;
             _nid.uID = IDI_SYSTRAY;
             _nid.uCallbackMessage = WM_SYSTRAY;
-            _nid.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_BOOK));
+            _nid.hIcon = (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_SMALL), IMAGE_ICON,
+                          GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
             _tcscpy(_nid.szTip, szTitle);
         }
         if (_nid.uFlags == 0)
